@@ -74,34 +74,55 @@ public class JavaSourceCompilerImpl implements JavaSourceCompiler {
 
     @Override
     public ClassLoader compile(ClassLoader parentClassLoader, CompilationUnit compilationUnit, String... options) {
-        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-        return compile(compiler, parentClassLoader, compilationUnit, options);
+        return compile(null, parentClassLoader, compilationUnit, options);
     }
 
+    @Override
+    public ClassLoader compile(
+            DiagnosticCollector<JavaFileObject> diagnostics,
+            ClassLoader parentClassLoader,
+            CompilationUnit compilationUnit,
+            String... options
+    ) {
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        return compile(compiler, diagnostics, parentClassLoader, compilationUnit, options);
+    }
 
-    protected ClassLoader compile(JavaCompiler compiler, ClassLoader parentClassLoader, CompilationUnit compilationUnit, String... options) {
+    protected ClassLoader compile(
+            JavaCompiler compiler,
+            DiagnosticCollector<JavaFileObject> diagnostics,
+            ClassLoader parentClassLoader,
+            CompilationUnit compilationUnit,
+            String... options
+    ) {
         if (compiler == null) {
             throw new IllegalStateException("Failed to find the system Java compiler. Check that your class path includes tools.jar");
         }
+        boolean handleDiagnostics = diagnostics == null;
+        if (handleDiagnostics) {
+            diagnostics = new DiagnosticCollector<JavaFileObject>();
+        }
         JavaFileObjectRegistry registry = compilationUnit.getRegistry();
         SimpleClassLoader result = new SimpleClassLoader(parentClassLoader, registry, compilationUnit.getOutputClassDirectory());
-        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
         JavaFileManager standardFileManager = compiler.getStandardFileManager(diagnostics, null, null);
         JavaFileManager javaFileManager = new SimpleJavaFileManager(standardFileManager, result, registry);
         Iterable<JavaFileObject> sources = registry.get(JavaFileObject.Kind.SOURCE);
         Collection<String> compilationOptions = buildOptions(compilationUnit, result, options);
         JavaCompiler.CompilationTask task = compiler.getTask(null, javaFileManager, diagnostics, compilationOptions, null, sources);
-        StringBuilder diagnosticBuilder = new StringBuilder();
         task.call();
-        boolean compilationError = false;
-        for (Diagnostic diagnostic : diagnostics.getDiagnostics()) {
-            compilationError |= buildDiagnosticMessage(diagnostic, diagnosticBuilder, registry);
-        }
-        if (diagnosticBuilder.length() > 0) {
-            if (compilationError) {
-                throw new IllegalStateException(diagnosticBuilder.toString());
-            } else {
-                logger.log(Level.WARNING, diagnosticBuilder.toString());
+        if (handleDiagnostics) {
+            StringBuilder diagnosticBuilder = new StringBuilder();
+            boolean compilationError = false;
+            for (Diagnostic diagnostic : diagnostics.getDiagnostics()) {
+                compilationError |= buildDiagnosticMessage(diagnostic, diagnosticBuilder, registry);
+            }
+            if (diagnosticBuilder.length() > 0) {
+                if (compilationError) {
+                    throw new IllegalStateException(diagnosticBuilder.toString());
+                }
+                else {
+                    logger.log(Level.WARNING, diagnosticBuilder.toString());
+                }
             }
         }
         result.addClassPathEntries(compilationUnit.getClassPathsEntries());

@@ -18,6 +18,8 @@ package org.abstractmeta.toolbox.compilation.compiler;
 
 import org.abstractmeta.toolbox.compilation.compiler.registry.JavaFileObjectRegistry;
 
+import javax.tools.DiagnosticCollector;
+import javax.tools.JavaFileObject;
 import java.io.File;
 import java.util.Collection;
 import java.util.List;
@@ -112,13 +114,28 @@ public interface JavaSourceCompiler {
     ClassLoader compile(CompilationUnit compilationUnit, String... compilerOptions);
 
     /**
-        * Compiles given compilation unit with the supplier compiler options and returns class loader for the compiled sources.
-        * @param parentClassLoader parent class loader for the new class loader created for this compilation
-        * @param compilationUnit compilation unit
-        * @param compilerOptions compiler options
-        * @return class loader for the compiled classes
-    */
+     * Compiles given compilation unit with the supplier compiler options and returns class loader for the compiled sources.
+     * @param parentClassLoader parent class loader for the new class loader created for this compilation
+     * @param compilationUnit compilation unit
+     * @param compilerOptions compiler options
+     * @return class loader for the compiled classes
+     */
     ClassLoader compile(ClassLoader parentClassLoader, CompilationUnit compilationUnit, String... compilerOptions);
+
+    /**
+     * Compiles given compilation unit with the supplier compiler options and returns class loader for the compiled sources.
+     * @param diagnosticCollector diagnostic collector for the compilation
+     * @param parentClassLoader parent class loader for the new class loader created for this compilation
+     * @param compilationUnit compilation unit
+     * @param compilerOptions compiler options
+     * @return class loader for the compiled classes
+     */
+    ClassLoader compile(
+            DiagnosticCollector<JavaFileObject> diagnosticCollector,
+            ClassLoader parentClassLoader,
+            CompilationUnit compilationUnit,
+            String... compilerOptions
+    );
 
     /**
      * By default source code and compiled classes are stored in memory, this however could be a limitation
